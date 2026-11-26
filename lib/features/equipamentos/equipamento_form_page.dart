@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/cliente.dart';
 import '../../data/models/equipamento.dart';
@@ -128,19 +129,19 @@ class _EquipamentoFormPageState extends State<EquipamentoFormPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceSubtle,
+                        color: context.tokens.subtle,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.hairline),
+                        border: Border.all(color: context.tokens.border),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.person_search_rounded, color: AppColors.primary),
+                          const Icon(Icons.person_search_rounded, color: AppColors.accent),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _nomeCliente ?? 'Toque para selecionar o cliente...',
                               style: TextStyle(
-                                color: _nomeCliente != null ? context.colors.text : context.colors.muted,
+                                color: _nomeCliente != null ? null : context.tokens.muted,
                                 fontWeight: _nomeCliente != null ? FontWeight.w600 : FontWeight.normal,
                               ),
                             ),

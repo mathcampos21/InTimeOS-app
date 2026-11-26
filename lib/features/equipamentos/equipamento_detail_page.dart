@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/equipamento.dart';
 import '../../data/models/ordem_servico.dart';
 import '../../data/repositories/cadastros_repository.dart';
 import '../clientes/cliente_detail_page.dart';
-import '../os/os_detail_page.dart';
 import '../os/os_form_page.dart';
 import '../os/widgets/os_card.dart';
 
@@ -91,10 +91,10 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
+                  color: AppColors.accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.devices_other_rounded, color: AppColors.primary, size: 28),
+                child: const Icon(Icons.devices_other_rounded, color: AppColors.accent, size: 28),
               ),
               const SizedBox(width: Gaps.md),
               Expanded(
@@ -108,7 +108,7 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
                     if ((e.marca ?? '').isNotEmpty || (e.modelo ?? '').isNotEmpty)
                       Text(
                         [e.marca, e.modelo].whereType<String>().where((s) => s.isNotEmpty).join(' · '),
-                        style: TextStyle(color: context.colors.muted, fontSize: 14),
+                        style: TextStyle(color: context.tokens.muted, fontSize: 14),
                       ),
                   ],
                 ),
@@ -120,14 +120,14 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.surfaceSubtle,
+                color: context.tokens.subtle,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.hairline),
+                border: Border.all(color: context.tokens.border),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.qr_code_rounded, size: 16, color: AppColors.accent),
+                  const Icon(Icons.qr_code_rounded, size: 16, color: AppColors.accentBright),
                   const SizedBox(width: 6),
                   Text(
                     'S/N: ${e.numSerie}',
@@ -156,7 +156,7 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
             const SizedBox(height: Gaps.sm),
             const Text('Descrição / Configuração:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             const SizedBox(height: 4),
-            Text(e.descricao!, style: TextStyle(color: context.colors.text)),
+            Text(e.descricao!),
           ],
         ],
       ),
@@ -176,17 +176,17 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.accent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 22),
+            child: const Icon(Icons.person_outline_rounded, color: AppColors.accent, size: 22),
           ),
           const SizedBox(width: Gaps.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Proprietário / Cliente', style: TextStyle(fontSize: 12, color: AppColors.accent)),
+                const Text('Proprietário / Cliente', style: TextStyle(fontSize: 12, color: AppColors.accentBright)),
                 Text(
                   e.nomeCliente ?? '',
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -194,12 +194,12 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
                 if ((e.telefoneCliente ?? '').isNotEmpty || (e.celularCliente ?? '').isNotEmpty)
                   Text(
                     [e.celularCliente, e.telefoneCliente].whereType<String>().where((s) => s.isNotEmpty).first,
-                    style: TextStyle(color: context.colors.muted, fontSize: 12),
+                    style: TextStyle(color: context.tokens.muted, fontSize: 12),
                   ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: context.colors.muted),
+          Icon(Icons.chevron_right_rounded, color: context.tokens.muted),
         ],
       ),
     );
@@ -235,15 +235,7 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
                 final os = OrdemServico.fromJson(Map<String, dynamic>.from(item));
                 return Padding(
                   padding: const EdgeInsets.only(bottom: Gaps.sm),
-                  child: OsCard(
-                    os: os,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => OsDetailPage(osId: os.id)),
-                      );
-                    },
-                  ),
+                  child: OsCard(os: os),
                 );
               }),
       ],
@@ -256,7 +248,7 @@ class _EquipamentoDetailPageState extends State<EquipamentoDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(rotulo, style: TextStyle(color: context.colors.muted, fontSize: 13)),
+          Text(rotulo, style: TextStyle(color: context.tokens.muted, fontSize: 13)),
           Text(valor, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
         ],
       ),

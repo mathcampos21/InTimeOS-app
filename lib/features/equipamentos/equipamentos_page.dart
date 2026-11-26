@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/equipamento.dart';
 import '../../data/repositories/cadastros_repository.dart';
@@ -81,11 +82,11 @@ class _EquipamentosPageState extends State<EquipamentosPage> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
+                  color: AppColors.accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(Icons.devices_other_rounded, color: AppColors.primary, size: 24),
+                child: const Icon(Icons.devices_other_rounded, color: AppColors.accent, size: 24),
               ),
               const SizedBox(width: Gaps.md),
               Expanded(
@@ -102,7 +103,7 @@ class _EquipamentosPageState extends State<EquipamentosPage> {
                     if ((e.nomeCliente ?? '').isNotEmpty)
                       Text(
                         e.nomeCliente!,
-                        style: TextStyle(color: context.colors.muted, fontSize: 13),
+                        style: TextStyle(color: context.tokens.muted, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -111,7 +112,7 @@ class _EquipamentosPageState extends State<EquipamentosPage> {
                       Text(
                         e.detalhesResumo,
                         style: const TextStyle(
-                          color: AppColors.accent,
+                          color: AppColors.accentBright,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -125,9 +126,9 @@ class _EquipamentosPageState extends State<EquipamentosPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSubtle,
+                    color: context.tokens.subtle,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.hairline),
+                    border: Border.all(color: context.tokens.border),
                   ),
                   child: Text(
                     '${e.totalOs} OS',
@@ -136,7 +137,7 @@ class _EquipamentosPageState extends State<EquipamentosPage> {
                 ),
               ],
               const SizedBox(width: Gaps.xs),
-              Icon(Icons.chevron_right_rounded, color: context.colors.muted),
+              Icon(Icons.chevron_right_rounded, color: context.tokens.muted),
             ],
           ),
         ),

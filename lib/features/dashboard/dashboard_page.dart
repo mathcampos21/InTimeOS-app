@@ -113,18 +113,21 @@ class _Header extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    Image.asset('assets/images/logo-two.png', height: 34),
+                    const SizedBox(width: Gaps.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            Fmt.dateShort(DateTime.now()).toUpperCase(),
+                            'INTIMEOS · ${Fmt.dateShort(DateTime.now()).toUpperCase()}',
                             style: context.text.labelSmall?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.6),
+                              color: AppColors.accentBright,
+                              fontWeight: FontWeight.w700,
                               letterSpacing: 1,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             firstName.isEmpty ? '$_greeting!' : '$_greeting, $firstName',
                             style: context.text.headlineSmall?.copyWith(color: Colors.white),
@@ -139,35 +142,59 @@ class _Header extends StatelessWidget {
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                          border: Border.all(color: AppColors.accentBright.withValues(alpha: 0.6), width: 1.5),
                         ),
                         child: InitialsAvatar(usuario?.nome ?? 'U', size: 40, imageUrl: usuario?.fotoUrl),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: Gaps.xl),
+                const SizedBox(height: Gaps.lg),
                 const _OsQuickSearch(),
                 const SizedBox(height: Gaps.md),
                 Row(
                   children: [
                     Expanded(
                       child: _HeaderStat(
-                        icon: Icons.autorenew_rounded,
+                        icon: Icons.build_circle_outlined,
                         label: 'Em andamento',
-                        value: data?.osAndamento.length,
-                        color: const Color(0xFF60A5FA),
-                        onTap: () => ShellScope.of(context)?.goTo(HomeShell.tabOs),
+                        value: data?.totalEmAndamento,
+                        color: AppColors.accentBright,
+                        onTap: () => ShellScope.of(context)?.openOsWithStatus('Em Andamento'),
                       ),
                     ),
                     const SizedBox(width: Gaps.sm),
                     Expanded(
                       child: _HeaderStat(
-                        icon: Icons.radio_button_unchecked_rounded,
-                        label: 'Em aberto',
-                        value: data?.osAbertas.length,
+                        icon: Icons.inventory_2_outlined,
+                        label: 'Aguard. peças',
+                        value: data?.totalAguardandoPecas,
+                        color: const Color(0xFFFBBF24),
+                        onTap: () => ShellScope.of(context)?.openOsWithStatus('Aguardando Peças'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Gaps.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _HeaderStat(
+                        icon: Icons.request_quote_outlined,
+                        label: 'Orçamentos',
+                        value: data?.totalOrcamentos,
+                        color: const Color(0xFF38BDF8),
+                        onTap: () => ShellScope.of(context)?.openOsWithStatus('Orçamento'),
+                      ),
+                    ),
+                    const SizedBox(width: Gaps.sm),
+                    Expanded(
+                      child: _HeaderStat(
+                        icon: Icons.check_circle_outline_rounded,
+                        label: 'Finalizadas',
+                        value: data?.totalFinalizadas,
                         color: const Color(0xFF4ADE80),
-                        onTap: () => ShellScope.of(context)?.goTo(HomeShell.tabOs),
+                        onTap: () => ShellScope.of(context)?.openOsWithStatus('Finalizado'),
                       ),
                     ),
                   ],
@@ -254,7 +281,7 @@ class _Body extends StatefulWidget {
 }
 
 class _BodyState extends State<_Body> {
-  bool _showAbertas = false;
+  int _osTab = 0; // 0: Em andamento, 1: Em aberto, 2: Aguard. peças
 
   @override
   Widget build(BuildContext context) {
@@ -288,17 +315,26 @@ class _BodyState extends State<_Body> {
       (Icons.calendar_month_rounded, 'Agenda', AppColors.garantias, () async {
         await Navigator.push(context, MaterialPageRoute(builder: (_) => const AgendaPage()));
       }),
-      (Icons.search_rounded, 'Ordens', AppColors.servicos, () async => shell?.goTo(HomeShell.tabOs)),
+      (Icons.search_rounded, 'Ordens', AppColors.servicos, () async => shell?.openOsWithStatus(null)),
     ];
 
-    final osItems = _showAbertas ? data.osAbertas : data.osAndamento;
+    final osItems = switch (_osTab) {
+      1 => data.osAbertas,
+      2 => data.osAguardandoPecas,
+      _ => data.osAndamento,
+    };
+    final emptyMsg = switch (_osTab) {
+      1 => 'Nenhuma OS em aberto.',
+      2 => 'Nenhuma OS aguardando peças.',
+      _ => 'Nenhuma OS em andamento.',
+    };
 
     return Padding(
       padding: Gaps.page,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionHeader('Atalhos', padding: EdgeInsets.fromLTRB(4, Gaps.sm, 4, Gaps.sm)),
+          const SectionHeader('Atalhos rápidos', padding: EdgeInsets.fromLTRB(4, Gaps.sm, 4, Gaps.sm)),
           Row(
             children: [
               for (final (i, a) in actions.indexed) ...[
@@ -307,7 +343,7 @@ class _BodyState extends State<_Body> {
               ],
             ],
           ),
-          const SectionHeader('Visão geral'),
+          const SectionHeader('Visão geral do sistema'),
           GridView.count(
             crossAxisCount: cols,
             shrinkWrap: true,
@@ -326,19 +362,20 @@ class _BodyState extends State<_Body> {
                 ),
             ],
           ),
-          SectionHeader('Ordens de serviço', action: 'Ver todas', onAction: () => shell?.goTo(HomeShell.tabOs)),
+          SectionHeader('Fila técnica de OS', action: 'Ver todas', onAction: () => shell?.openOsWithStatus(null)),
           _OsToggle(
-            showAbertas: _showAbertas,
+            selectedTab: _osTab,
             andamento: data.osAndamento.length,
             abertas: data.osAbertas.length,
-            onChanged: (v) => setState(() => _showAbertas = v),
+            aguardando: data.osAguardandoPecas.length,
+            onChanged: (v) => setState(() => _osTab = v),
           ),
           const SizedBox(height: Gaps.sm),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
             child: Column(
-              key: ValueKey(_showAbertas),
+              key: ValueKey(_osTab),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (osItems.isEmpty)
@@ -349,14 +386,14 @@ class _BodyState extends State<_Body> {
                         Icon(Icons.inbox_outlined, size: 36, color: context.tokens.muted),
                         const SizedBox(height: Gaps.sm),
                         Text(
-                          _showAbertas ? 'Nenhuma OS em aberto.' : 'Nenhuma OS em andamento.',
+                          emptyMsg,
                           style: context.text.bodyMedium?.copyWith(color: context.tokens.muted),
                         ),
                       ],
                     ),
                   )
                 else
-                  for (final os in osItems.take(5)) ...[
+                  for (final os in osItems.take(6)) ...[
                     OsCard(os: os, onChanged: onChanged),
                     const SizedBox(height: Gaps.sm),
                   ],
@@ -466,27 +503,34 @@ class _CountUp extends StatelessWidget {
   }
 }
 
-/// Alternador "Em andamento / Em aberto".
+/// Alternador "Em andamento / Em aberto / Aguard. peças".
 class _OsToggle extends StatelessWidget {
-  const _OsToggle({required this.showAbertas, required this.andamento, required this.abertas, required this.onChanged});
+  const _OsToggle({
+    required this.selectedTab,
+    required this.andamento,
+    required this.abertas,
+    required this.aguardando,
+    required this.onChanged,
+  });
 
-  final bool showAbertas;
+  final int selectedTab;
   final int andamento;
   final int abertas;
-  final ValueChanged<bool> onChanged;
+  final int aguardando;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    Widget option(bool value, String label, int count) {
-      final selected = value == showAbertas;
+    Widget option(int index, String label, int count) {
+      final selected = index == selectedTab;
       return Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => onChanged(value),
+          onTap: () => onChanged(index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             decoration: BoxDecoration(
               color: selected ? context.colors.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(Gaps.radiusSm),
@@ -495,15 +539,20 @@ class _OsToggle extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  label,
-                  style: context.text.labelLarge?.copyWith(
-                    color: selected ? context.colors.onSurface : context.tokens.muted,
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.labelMedium?.copyWith(
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? context.colors.onSurface : context.tokens.muted,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
                     color: selected ? AppColors.accent : context.tokens.border,
                     borderRadius: BorderRadius.circular(999),
@@ -531,8 +580,9 @@ class _OsToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          option(false, 'Em andamento', andamento),
-          option(true, 'Em aberto', abertas),
+          option(0, 'Andamento', andamento),
+          option(1, 'Abertas', abertas),
+          option(2, 'Peças', aguardando),
         ],
       ),
     );

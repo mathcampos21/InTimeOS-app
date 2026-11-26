@@ -78,21 +78,21 @@ abstract final class AppTheme {
     final muted = dark ? AppColors.mutedDark : AppColors.mutedLight;
 
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.brand,
+      seedColor: AppColors.accent,
       brightness: brightness,
     ).copyWith(
-      primary: dark ? const Color(0xFFB9BEF0) : AppColors.brand,
+      primary: dark ? AppColors.accentBright : AppColors.accent,
       onPrimary: dark ? AppColors.brandDeep : Colors.white,
       secondary: AppColors.accent,
       onSecondary: Colors.white,
-      tertiary: AppColors.accent,
+      tertiary: AppColors.accentBright,
       surface: surface,
       onSurface: onSurface,
       onSurfaceVariant: muted,
       surfaceContainerLowest: bg,
-      surfaceContainerLow: dark ? const Color(0xFF131621) : const Color(0xFFF9FAFC),
-      surfaceContainer: dark ? const Color(0xFF1C2030) : const Color(0xFFF1F2F7),
-      surfaceContainerHigh: dark ? const Color(0xFF222738) : const Color(0xFFEBEDF3),
+      surfaceContainerLow: dark ? const Color(0xFF11152B) : const Color(0xFFF8FAFC),
+      surfaceContainer: dark ? const Color(0xFF181D38) : const Color(0xFFF1F5F9),
+      surfaceContainerHigh: dark ? const Color(0xFF1E2544) : const Color(0xFFE2E8F0),
       outline: border,
       outlineVariant: border,
       error: AppColors.danger,

@@ -7,12 +7,6 @@ import '../../core/widgets/ui.dart';
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
-  static const _team = [
-    ('Felipe Santt', 'Desenvolvimento mobile', 'https://avatars.githubusercontent.com/u/33626716?v=4'),
-    ('Julio Lobo', 'API e back-end', 'https://avatars.githubusercontent.com/u/13459803?v=4'),
-    ('N4m3r', 'Colaborador', ''),
-  ];
-
   Future<void> _open(BuildContext context, String url) async {
     final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) Toast.error(context, 'Não foi possível abrir o link.');
@@ -37,10 +31,15 @@ class AboutPage extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      Image.asset('assets/images/logo.png', height: 48),
-                      const SizedBox(height: Gaps.lg),
+                      Image.asset('assets/images/logo-two.png', height: 56),
+                      const SizedBox(height: Gaps.md),
                       Text(
-                        'Aplicativo oficial para o sistema MAP-OS de gestão de ordens de serviço.',
+                        '${AppConfig.appName} Mobile',
+                        style: context.text.titleLarge?.copyWith(color: Colors.white),
+                      ),
+                      const SizedBox(height: Gaps.xs),
+                      Text(
+                        AppConfig.appDescription,
                         textAlign: TextAlign.center,
                         style: context.text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                       ),
@@ -59,45 +58,32 @@ class AboutPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SectionHeader('Equipe'),
-                Card(
-                  child: Column(
-                    children: [
-                      for (final (i, m) in _team.indexed) ...[
-                        if (i > 0) const Divider(indent: Gaps.lg, endIndent: Gaps.lg),
-                        ListTile(
-                          leading: InitialsAvatar(m.$1, imageUrl: m.$3),
-                          title: Text(m.$1),
-                          subtitle: Text(m.$2),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SectionHeader('Links'),
+                const SectionHeader('In Time Technology'),
                 Card(
                   child: Column(
                     children: [
                       ListTile(
-                        leading: const IconBadge(Icons.favorite_rounded, color: AppColors.accent, size: 36),
-                        title: const Text('Apoie o projeto'),
-                        subtitle: const Text('Ajude a manter o MAP-OS evoluindo'),
+                        leading: const IconBadge(Icons.public_rounded, color: AppColors.accent, size: 36),
+                        title: const Text('Painel Web InTimeOS'),
+                        subtitle: const Text('itos.intimelab.com.br'),
                         trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                         onTap: () => _open(context, AppConfig.appSiteUrl),
                       ),
                       const Divider(indent: Gaps.lg, endIndent: Gaps.lg),
-                      ListTile(
-                        leading: const IconBadge(Icons.code_rounded, color: AppColors.brand, size: 36),
-                        title: const Text('Código-fonte do app'),
-                        subtitle: const Text('github.com/map-os/map-os-app-flutter'),
-                        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-                        onTap: () => _open(context, AppConfig.projectUrl),
+                      const ListTile(
+                        leading: IconBadge(Icons.verified_user_outlined, color: AppColors.servicos, size: 36),
+                        title: Text('Uso exclusivo de colaboradores'),
+                        subtitle: Text('Sincronizado em tempo real com a operação técnica da In Time Technology'),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: Gaps.xl),
-                Text('Feito com Flutter · Licença MIT', style: context.text.bodySmall, textAlign: TextAlign.center),
+                Text(
+                  '© ${DateTime.now().year} In Time Technology · InTimeOS v${AppConfig.appVersion}',
+                  style: context.text.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),

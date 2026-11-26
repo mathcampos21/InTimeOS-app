@@ -30,6 +30,19 @@ class OsCard extends StatelessWidget {
                 'OS #${os.id}',
                 style: context.text.labelLarge?.copyWith(color: context.tokens.muted, letterSpacing: 0.2),
               ),
+              if (os.responsavel.isNotEmpty) ...[
+                const SizedBox(width: Gaps.sm),
+                Icon(Icons.engineering_outlined, size: 14, color: context.tokens.muted),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    os.responsavel.split(' ').first,
+                    style: context.text.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
               const Spacer(),
               StatusChip(os.status, dense: true),
             ],

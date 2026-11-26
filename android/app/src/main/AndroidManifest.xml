@@ -10,7 +10,7 @@
     <application
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
-        android:label="MAP-OS APP"
+        android:label="InTimeOS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

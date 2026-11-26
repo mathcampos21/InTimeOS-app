@@ -51,8 +51,19 @@ class _OsFormPageState extends State<OsFormPage> {
     if (_usuarioId == null) _preselectUsuario();
   }
 
-  /// Em uma OS nova, sugere o primeiro técnico se só houver um.
+  /// Em uma OS nova, pré-seleciona o funcionário logado como técnico responsável.
   Future<void> _preselectUsuario() async {
+    try {
+      final repo = context.read<ContaRepository>();
+      final me = await repo.perfil();
+      if (mounted && _usuarioId == null && me.id > 0) {
+        setState(() {
+          _usuarioId = me.id;
+          _usuarioNome = me.nome;
+        });
+        return;
+      }
+    } catch (_) {}
     try {
       final users = await context.read<ContaRepository>().usuarios();
       if (mounted && users.length == 1 && _usuarioId == null) {
@@ -100,8 +111,15 @@ class _OsFormPageState extends State<OsFormPage> {
       title: 'Selecionar técnico',
       hint: 'Buscar técnico',
       fetch: (s) async {
-        final all = await repo.usuarios();
         final q = s.toLowerCase();
+        List<Usuario> all;
+        try {
+          all = await repo.usuarios();
+        } catch (_) {
+          // Se o funcionário não tiver permissão cUsuario, usa o próprio perfil logado.
+          final me = await repo.perfil();
+          all = [me];
+        }
         return q.isEmpty ? all : all.where((u) => u.nome.toLowerCase().contains(q)).toList();
       },
       itemBuilder: (context, u) => ListTile(
@@ -249,22 +267,25 @@ class _OsFormPageState extends State<OsFormPage> {
                       ),
                     ],
                   ),
-                  if (_editing) ...[
-                    const SizedBox(height: Gaps.md),
-                    FormSection(
-                      title: 'Conclusão',
-                      icon: Icons.fact_check_outlined,
-                      children: [
-                        AppTextField(
-                          controller: _laudo,
-                          label: 'Laudo técnico',
-                          maxLines: 4,
-                          textCapitalization: TextCapitalization.sentences,
-                        ),
-                        AppTextField(controller: _garantia, label: 'Garantia (dias)', icon: Icons.verified_user_outlined, keyboardType: TextInputType.number),
-                      ],
-                    ),
-                  ],
+                  const SizedBox(height: Gaps.md),
+                  FormSection(
+                    title: 'Laudo técnico e garantia',
+                    icon: Icons.fact_check_outlined,
+                    children: [
+                      AppTextField(
+                        controller: _laudo,
+                        label: 'Laudo técnico',
+                        maxLines: 4,
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
+                      AppTextField(
+                        controller: _garantia,
+                        label: 'Garantia (dias)',
+                        icon: Icons.verified_user_outlined,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

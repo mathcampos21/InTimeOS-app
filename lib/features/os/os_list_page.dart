@@ -10,14 +10,16 @@ import 'os_form_page.dart';
 import 'widgets/os_card.dart';
 
 class OsListPage extends StatefulWidget {
-  const OsListPage({super.key});
+  const OsListPage({super.key, this.initialStatus});
+
+  final String? initialStatus;
 
   @override
   State<OsListPage> createState() => _OsListPageState();
 }
 
 class _OsListPageState extends State<OsListPage> {
-  String? _status;
+  late String? _status = widget.initialStatus;
 
   late final PagedController<OrdemServico> _ctrl = PagedController(
     pageSize: OsRepository.perPage,

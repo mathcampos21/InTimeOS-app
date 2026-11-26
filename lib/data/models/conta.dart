@@ -10,6 +10,11 @@ class Usuario {
     this.telefone = '',
     this.celular = '',
     this.cpf = '',
+    this.rg = '',
+    this.cep = '',
+    this.rua = '',
+    this.numero = '',
+    this.bairro = '',
     this.cidade = '',
     this.estado = '',
     this.fotoUrl = '',
@@ -22,6 +27,11 @@ class Usuario {
   final String telefone;
   final String celular;
   final String cpf;
+  final String rg;
+  final String cep;
+  final String rua;
+  final String numero;
+  final String bairro;
   final String cidade;
   final String estado;
   final String fotoUrl;
@@ -34,11 +44,31 @@ class Usuario {
         telefone: asString(j['telefone']),
         celular: asString(j['celular']),
         cpf: asString(j['cpf']),
+        rg: asString(j['rg']),
+        cep: asString(j['cep']),
+        rua: asString(j['rua']),
+        numero: asString(j['numero']),
+        bairro: asString(j['bairro']),
         cidade: asString(j['cidade']),
         estado: asString(j['estado']),
         fotoUrl: asString(j['url_image_user']),
         dataExpiracao: asDate(j['dataExpiracao']),
       );
+
+  Map<String, dynamic> toProfileJson() => {
+        'nome': nome,
+        'rg': rg,
+        'cpf': cpf,
+        'cep': cep,
+        'rua': rua,
+        'numero': numero,
+        'bairro': bairro,
+        'cidade': cidade,
+        'estado': estado,
+        'email': email,
+        'telefone': telefone,
+        'celular': celular,
+      };
 }
 
 class Emitente {
@@ -87,6 +117,9 @@ class DashboardData {
     required this.vendas,
     required this.osAbertas,
     required this.osAndamento,
+    required this.osAguardandoPecas,
+    required this.osOrcamento,
+    required this.osPorStatus,
     required this.estoqueBaixo,
   });
 
@@ -98,12 +131,39 @@ class DashboardData {
   final int vendas;
   final List<OrdemServico> osAbertas;
   final List<OrdemServico> osAndamento;
+  final List<OrdemServico> osAguardandoPecas;
+  final List<OrdemServico> osOrcamento;
+  final Map<String, int> osPorStatus;
   final List<Produto> estoqueBaixo;
+
+  int statusCount(String status) => osPorStatus[status] ?? 0;
+
+  int get totalEmAndamento {
+    if (osPorStatus.isEmpty) return osAndamento.length + osAbertas.length;
+    return statusCount('Aberto') +
+        statusCount('Aprovado') +
+        statusCount('Em Andamento') +
+        statusCount('Aguardando Peças');
+  }
+
+  int get totalAguardandoPecas =>
+      osPorStatus.isEmpty ? osAguardandoPecas.length : statusCount('Aguardando Peças');
+
+  int get totalOrcamentos =>
+      osPorStatus.isEmpty ? osOrcamento.length : (statusCount('Orçamento') + statusCount('Negociação'));
+
+  int get totalFinalizadas => statusCount('Finalizado') + statusCount('Faturado');
 
   factory DashboardData.fromJson(Map<String, dynamic> j) {
     List<T> list<T>(String k, T Function(Map<String, dynamic>) f) => (j[k] is List)
         ? (j[k] as List).whereType<Map>().map((e) => f(Map<String, dynamic>.from(e))).toList()
         : <T>[];
+    final statusMap = <String, int>{};
+    if (j['osPorStatus'] is Map) {
+      (j['osPorStatus'] as Map).forEach((k, v) {
+        statusMap[k.toString()] = asInt(v);
+      });
+    }
     return DashboardData(
       countOs: asInt(j['countOs']),
       clientes: asInt(j['clientes']),
@@ -113,6 +173,9 @@ class DashboardData {
       vendas: asInt(j['vendas']),
       osAbertas: list('osAbertas', OrdemServico.fromJson),
       osAndamento: list('osAndamento', OrdemServico.fromJson),
+      osAguardandoPecas: list('osAguardandoPecas', OrdemServico.fromJson),
+      osOrcamento: list('osOrcamento', OrdemServico.fromJson),
+      osPorStatus: statusMap,
       estoqueBaixo: list('estoqueBaixo', Produto.fromJson),
     );
   }

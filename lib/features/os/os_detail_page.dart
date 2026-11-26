@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/app_state.dart';
+import '../../core/config/app_config.dart';
 import '../../core/utils/launchers.dart';
 import '../../core/widgets/ui.dart';
 import '../../data/models/ordem_servico.dart';
@@ -60,8 +62,8 @@ class _OsDetailPageState extends State<OsDetailPage> {
         garantia: os.garantia,
       );
 
-  Future<void> _changeStatus(OrdemServico os) async {
-    final s = await showStatusSheet(context, os.status);
+  Future<void> _changeStatus(OrdemServico os, [String? targetStatus]) async {
+    final s = targetStatus ?? await showStatusSheet(context, os.status);
     if (s == null || s == os.status || !mounted) return;
     final ok = await runAction(
       context,
@@ -69,6 +71,15 @@ class _OsDetailPageState extends State<OsDetailPage> {
       success: 'Status alterado para "$s".',
     );
     if (ok) await _reload();
+  }
+
+  Future<void> _openWebPrint(OrdemServico os) async {
+    final base = context.read<AuthState>().serverUrl ?? AppConfig.defaultServerUrl;
+    final uri = Uri.parse('$base/index.php/os/imprimir/${os.id}');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      Toast.error(context, 'Não foi possível abrir a página de impressão.');
+    }
   }
 
   Future<void> _edit(OrdemServico os) async {
@@ -100,9 +111,9 @@ class _OsDetailPageState extends State<OsDetailPage> {
     if (done && mounted) Navigator.pop(context, true);
   }
 
-  void _share(OrdemServico os) {
+  String _buildOsSummaryText(OrdemServico os) {
     final b = StringBuffer()
-      ..writeln('*Ordem de Serviço #${os.id}*')
+      ..writeln('*InTimeOS · Ordem de Serviço #${os.id}*')
       ..writeln('Status: ${os.status}')
       ..writeln('Cliente: ${os.nomeCliente}')
       ..writeln('Período: ${Fmt.date(os.dataInicial)} a ${Fmt.date(os.dataFinal)}');
@@ -110,6 +121,9 @@ class _OsDetailPageState extends State<OsDetailPage> {
     if (desc.isNotEmpty) b.writeln('Equipamento: $desc');
     final def = Fmt.plain(os.defeito);
     if (def.isNotEmpty) b.writeln('Defeito: $def');
+    final laudo = Fmt.plain(os.laudoTecnico);
+    if (laudo.isNotEmpty) b.writeln('Laudo técnico: $laudo');
+    if (os.garantia.isNotEmpty) b.writeln('Garantia: ${os.garantia} dias');
     if (os.produtos.isNotEmpty) {
       b.writeln('\n*Produtos*');
       for (final p in os.produtos) {
@@ -124,7 +138,16 @@ class _OsDetailPageState extends State<OsDetailPage> {
     }
     if (os.temDesconto) b.writeln('\nDesconto: -${Fmt.money(os.valorDoDesconto)}');
     b.writeln('\n*Total: ${Fmt.money(os.total)}*');
-    SharePlus.instance.share(ShareParams(text: b.toString(), subject: 'OS #${os.id}'));
+    return b.toString();
+  }
+
+  void _share(OrdemServico os) {
+    SharePlus.instance.share(ShareParams(text: _buildOsSummaryText(os), subject: 'OS #${os.id} — InTimeOS'));
+  }
+
+  void _openWhatsApp(OrdemServico os) {
+    final msg = os.textoWhatsApp.trim().isNotEmpty ? os.textoWhatsApp : _buildOsSummaryText(os);
+    Launch.whatsapp(os.phone, text: msg);
   }
 
   @override
@@ -146,6 +169,11 @@ class _OsDetailPageState extends State<OsDetailPage> {
         appBar: AppBar(
           title: Text('OS #${os.id}'),
           actions: [
+            IconButton(
+              tooltip: 'Imprimir OS (2 vias)',
+              icon: const Icon(Icons.print_outlined),
+              onPressed: () => _openWebPrint(os),
+            ),
             IconButton(tooltip: 'Compartilhar', icon: const Icon(Icons.ios_share_rounded), onPressed: () => _share(os)),
             if (canEdit) IconButton(tooltip: 'Editar', icon: const Icon(Icons.edit_outlined), onPressed: () => _edit(os)),
             if (perms.canDelete('Os'))
@@ -173,6 +201,8 @@ class _OsDetailPageState extends State<OsDetailPage> {
                   os: os,
                   canEdit: canEdit,
                   onStatus: () => _changeStatus(os),
+                  onQuickStatus: (s) => _changeStatus(os, s),
+                  onWhatsApp: () => _openWhatsApp(os),
                 ),
               ),
             ),
@@ -215,14 +245,31 @@ class _OsDetailPageState extends State<OsDetailPage> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.os, required this.canEdit, required this.onStatus});
+  const _Header({
+    required this.os,
+    required this.canEdit,
+    required this.onStatus,
+    required this.onQuickStatus,
+    required this.onWhatsApp,
+  });
 
   final OrdemServico os;
   final bool canEdit;
   final VoidCallback onStatus;
+  final ValueChanged<String> onQuickStatus;
+  final VoidCallback onWhatsApp;
+
+  static const _quickStatuses = [
+    'Em Andamento',
+    'Aguardando Peças',
+    'Orçamento',
+    'Aprovado',
+    'Finalizado',
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final closed = os.faturado || os.status == 'Faturado' || os.status == 'Cancelado';
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gaps.lg, Gaps.xs, Gaps.lg, Gaps.md),
       child: AppCard(
@@ -248,6 +295,27 @@ class _Header extends StatelessWidget {
                   const StatusChip('Faturado', dense: true),
               ],
             ),
+            if (canEdit && !closed) ...[
+              const SizedBox(height: Gaps.sm),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final s in _quickStatuses)
+                      if (s != os.status)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: Icon(StatusColors.icon(s), size: 14, color: StatusColors.of(s)),
+                            label: Text(s, style: const TextStyle(fontSize: 12)),
+                            onPressed: () => onQuickStatus(s),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: Gaps.lg),
             InkWell(
               borderRadius: BorderRadius.circular(Gaps.radiusSm),
@@ -278,7 +346,7 @@ class _Header extends StatelessWidget {
                       tooltip: 'WhatsApp',
                       style: IconButton.styleFrom(backgroundColor: const Color(0xFF25D366), foregroundColor: Colors.white),
                       icon: const Icon(Icons.chat_rounded, size: 20),
-                      onPressed: () => Launch.whatsapp(os.phone, text: os.textoWhatsApp),
+                      onPressed: onWhatsApp,
                     ),
                   ],
                 ],

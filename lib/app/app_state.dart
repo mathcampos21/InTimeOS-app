@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/config/app_config.dart';
 import '../core/storage/session_store.dart';
 import '../data/models/conta.dart';
 import '../data/repositories/auth_repository.dart';
@@ -15,7 +16,16 @@ class AuthState extends ChangeNotifier {
   bool get loggedIn => _loggedIn;
   Permissions get permissions => Permissions(_session.permissions);
   String? get lastEmail => _session.lastEmail;
-  String? get serverUrl => _session.baseUrl;
+  String? get serverUrl =>
+      (_session.baseUrl ?? '').isNotEmpty ? _session.baseUrl : AppConfig.defaultServerUrl;
+  String get cfAccessClientId => _session.cfAccessClientId;
+  String get cfAccessClientSecret => _session.cfAccessClientSecret;
+  bool get hasCfAccessToken => _session.hasCfAccessToken;
+
+  Future<void> setCfAccessCredentials({required String clientId, required String clientSecret}) async {
+    await _session.setCfAccessCredentials(clientId: clientId, clientSecret: clientSecret);
+    notifyListeners();
+  }
 
   /// Primeiro acesso: ainda não viu o onboarding nem configurou um servidor.
   /// Quem já tinha URL salva (versões anteriores) pula direto para o login.
@@ -34,8 +44,13 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login({required String serverUrl, required String email, required String password}) async {
-    await _repo.login(serverUrl: serverUrl, email: email, password: password);
+  Future<void> login({
+    required String serverUrl,
+    required String email,
+    required String password,
+    String? totp,
+  }) async {
+    await _repo.login(serverUrl: serverUrl, email: email, password: password, totp: totp);
     _loggedIn = true;
     notifyListeners();
   }

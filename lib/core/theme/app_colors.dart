@@ -1,34 +1,35 @@
 import 'package:flutter/material.dart';
 
-/// Paleta da marca MAP-OS (navy + laranja), refinada para UI moderna.
+/// Paleta da marca In Time Technology (InTimeOS — navy profundo + azul/ciano tecnológico).
 abstract final class AppColors {
-  // Marca
-  static const Color brand = Color(0xFF2B2E4A); // navy
-  static const Color brandDeep = Color(0xFF1C1E33);
-  static const Color accent = Color(0xFFF3742F); // laranja
+  // Marca In Time Technology
+  static const Color brand = Color(0xFF14172F); // canvas-dark InTimeOS
+  static const Color brandDeep = Color(0xFF0F1225); // night InTimeOS
+  static const Color accent = Color(0xFF0284C7); // azul principal InTimeOS (#0369a1 / #0284c7)
+  static const Color accentBright = Color(0xFF38BDF8); // ciano destaque InTimeOS
 
   // Neutros — claro
-  static const Color bgLight = Color(0xFFF5F6FA);
+  static const Color bgLight = Color(0xFFF4F6FA);
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color borderLight = Color(0xFFE6E8EF);
-  static const Color textLight = Color(0xFF1B1D2B);
-  static const Color mutedLight = Color(0xFF6B7085);
+  static const Color borderLight = Color(0xFFE2E8F0);
+  static const Color textLight = Color(0xFF0F172A);
+  static const Color mutedLight = Color(0xFF64748B);
 
-  // Neutros — escuro
-  static const Color bgDark = Color(0xFF0E1018);
-  static const Color surfaceDark = Color(0xFF171A25);
-  static const Color borderDark = Color(0xFF262A39);
-  static const Color textDark = Color(0xFFE9EAF2);
-  static const Color mutedDark = Color(0xFF9A9FB5);
+  // Neutros — escuro (alinhado ao tokens.css do InTimeOS)
+  static const Color bgDark = Color(0xFF0F1225);
+  static const Color surfaceDark = Color(0xFF14172F);
+  static const Color borderDark = Color(0xFF1E293B);
+  static const Color textDark = Color(0xFFF8FAFC);
+  static const Color mutedDark = Color(0xFF94A3B8);
 
   // Semânticas
   static const Color success = Color(0xFF16A34A);
   static const Color warning = Color(0xFFD97706);
   static const Color danger = Color(0xFFDC2626);
-  static const Color info = Color(0xFF2563EB);
+  static const Color info = Color(0xFF0284C7);
 
   // Módulos (ícones, KPIs)
-  static const Color os = Color(0xFFF3742F);
+  static const Color os = Color(0xFF0284C7);
   static const Color clientes = Color(0xFF2563EB);
   static const Color produtos = Color(0xFFD97706);
   static const Color servicos = Color(0xFF0D9488);

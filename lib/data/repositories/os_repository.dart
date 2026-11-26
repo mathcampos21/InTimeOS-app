@@ -65,6 +65,7 @@ class OsRepository {
   Future<void> aplicarDesconto(int osId, {required double desconto, required String tipo, required double valorFinal}) =>
       _api.post('/os/$osId/desconto', body: {
         'desconto': desconto,
+        'tipoDesconto': tipo,
         'tipo_desconto': tipo,
         'valor_desconto': valorFinal,
       });

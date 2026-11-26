@@ -29,7 +29,7 @@ class ApiClient {
 
   Uri _uri(String path, [Map<String, dynamic>? query]) {
     if (baseUrl.isEmpty) {
-      throw const ApiException('Servidor não configurado. Informe a URL do seu MAP-OS.');
+      throw const ApiException('Servidor não configurado. Informe a URL do seu InTimeOS.');
     }
     final q = <String, String>{};
     query?.forEach((k, v) {
@@ -43,6 +43,10 @@ class ApiClient {
         if (json) 'Content-Type': 'application/json',
         'Accept': 'application/json',
         'App-Version': AppConfig.appVersion,
+        if (_session.hasCfAccessToken) ...{
+          'CF-Access-Client-Id': _session.cfAccessClientId,
+          'CF-Access-Client-Secret': _session.cfAccessClientSecret,
+        },
         if (auth && _session.accessToken != null)
           'Authorization': 'Bearer ${_session.accessToken}',
       };
@@ -134,6 +138,15 @@ class ApiClient {
     bool retryOnAuth = true,
   }) async {
     var res = await _guard(request);
+    if (_isCloudflareAccessResponse(res)) {
+      throw ApiException(
+        _session.hasCfAccessToken
+            ? 'O Cloudflare Access recusou o Service Token configurado. Verifique o Client ID, o Client Secret e a política Service Auth no Cloudflare Zero Trust.'
+            : 'Este servidor está protegido pelo Cloudflare Access. Configure o Service Token (Client ID e Client Secret) do Cloudflare no app.',
+        statusCode: res.statusCode,
+        cloudflareAccessBlocked: true,
+      );
+    }
     if (retryOnAuth && (res.statusCode == 401 || res.statusCode == 403) && _session.hasSession) {
       final refreshed = await _refreshToken();
       if (refreshed) {
@@ -148,6 +161,26 @@ class ApiClient {
     return res;
   }
 
+  static bool _isCloudflareAccessResponse(http.Response res) {
+    final loc = (res.headers['location'] ?? '').toLowerCase();
+    if (loc.contains('/cdn-cgi/access/login') || loc.contains('.cloudflareaccess.com')) {
+      return true;
+    }
+    final ct = (res.headers['content-type'] ?? '').toLowerCase();
+    if (ct.contains('text/html') || res.statusCode == 403 || res.statusCode == 302) {
+      try {
+        final text = utf8.decode(res.bodyBytes, allowMalformed: true).toLowerCase();
+        if (text.contains('cloudflareaccess.com') ||
+            text.contains('/cdn-cgi/access/') ||
+            text.contains('cf-access-domain') ||
+            text.contains('cloudflare access')) {
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
   Future<http.Response> _guard(Future<http.Response> Function() request) async {
     try {
       return await request().timeout(AppConfig.requestTimeout);
@@ -159,7 +192,7 @@ class ApiClient {
       final msg = e.toString().toLowerCase();
       if (kIsWeb && (msg.contains('failed to fetch') || msg.contains('xmlhttprequest'))) {
         throw const ApiException(
-          'Não foi possível acessar o servidor. Verifique a URL e se o MAP-OS permite acesso (CORS).',
+          'Não foi possível acessar o servidor. Verifique a URL e se o InTimeOS permite acesso (CORS).',
           isNetwork: true,
         );
       }
@@ -189,6 +222,10 @@ class ApiClient {
       final access = result?['access_token'] as String?;
       if (data['status'] != true || access == null) return false;
       await _session.saveTokens(access: access, refresh: result?['refresh_token'] as String?);
+      final perms = result?['permissions'];
+      if (perms is List && perms.isNotEmpty && perms.first is Map) {
+        await _session.savePermissions(Map<String, dynamic>.from(perms.first as Map));
+      }
       return true;
     } catch (_) {
       return false;
@@ -211,7 +248,12 @@ class ApiClient {
 
     final ok = body['status'] == true && res.statusCode >= 200 && res.statusCode < 300;
     if (!ok) {
-      throw ApiException(_cleanMessage(body['message']), statusCode: res.statusCode);
+      throw ApiException(
+        _cleanMessage(body['message']),
+        statusCode: res.statusCode,
+        twoFactorRequired: body['two_factor_required'] == true,
+        twoFactorSetupRequired: body['two_factor_setup_required'] == true,
+      );
     }
     return body['result'];
   }

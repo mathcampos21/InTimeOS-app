@@ -80,6 +80,17 @@ class ContaRepository {
     return Usuario.fromJson(_map(r['usuario']));
   }
 
+  /// Atualiza os dados do próprio perfil do funcionário (PUT /api/v1/usuarios/{id}).
+  Future<Usuario> updatePerfil(Usuario u, {String? senhaAtual, String? novaSenha}) async {
+    final body = <String, dynamic>{
+      ...u.toProfileJson(),
+      if (senhaAtual != null && senhaAtual.isNotEmpty) 'senha_atual': senhaAtual,
+      if (novaSenha != null && novaSenha.isNotEmpty) 'senha': novaSenha,
+    };
+    final r = _map(await _api.put('/usuarios/${u.id}', body: body));
+    return Usuario.fromJson(r);
+  }
+
   Future<Emitente> emitente() async => Emitente.fromJson(_map(await _api.get('/emitente', cache: true)));
 
   Future<List<Usuario>> usuarios() async =>

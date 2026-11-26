@@ -14,9 +14,15 @@ import '../servicos/servicos_page.dart';
 
 /// Permite que telas filhas troquem a aba ativa (ex.: "ver todas" no dashboard).
 class ShellScope extends InheritedWidget {
-  const ShellScope({super.key, required this.goTo, required super.child});
+  const ShellScope({
+    super.key,
+    required this.goTo,
+    required this.openOsWithStatus,
+    required super.child,
+  });
 
   final ValueChanged<int> goTo;
+  final ValueChanged<String?> openOsWithStatus;
 
   static ShellScope? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ShellScope>();
 
@@ -40,13 +46,15 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   final _visited = <int>{0};
+  String? _osInitialStatus;
+  int _osFilterVersion = 0;
 
   /// Usuário logado — só para o rodapé da sidebar (telas largas).
   late final Future<Usuario?> _me =
       context.read<ContaRepository>().perfil().then<Usuario?>((u) => u).catchError((_) => null);
 
   static const _destinations = [
-    (Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, 'Início'),
+    (Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, 'Painel'),
     (Icons.assignment_outlined, Icons.assignment_rounded, 'Ordens'),
     (Icons.people_outline_rounded, Icons.people_rounded, 'Clientes'),
     (Icons.inventory_2_outlined, Icons.inventory_2_rounded, 'Produtos'),
@@ -58,6 +66,13 @@ class _HomeShellState extends State<HomeShell> {
         _visited.add(i);
       });
 
+  void _openOsWithStatus(String? status) => setState(() {
+        _osInitialStatus = status;
+        _osFilterVersion++;
+        _index = HomeShell.tabOs;
+        _visited.add(HomeShell.tabOs);
+      });
+
   Widget _page(int i) {
     // Abas são construídas sob demanda e mantidas vivas depois.
     if (!_visited.contains(i)) return const SizedBox.shrink();
@@ -65,7 +80,10 @@ class _HomeShellState extends State<HomeShell> {
       case 0:
         return const DashboardPage();
       case 1:
-        return const OsListPage();
+        return OsListPage(
+          key: ValueKey('os_list_$_osFilterVersion'),
+          initialStatus: _osInitialStatus,
+        );
       case 2:
         return const ClientesPage();
       case 3:
@@ -82,6 +100,7 @@ class _HomeShellState extends State<HomeShell> {
 
     return ShellScope(
       goTo: _go,
+      openOsWithStatus: _openOsWithStatus,
       child: PopScope(
         canPop: _index == 0,
         onPopInvokedWithResult: (didPop, _) {
@@ -160,7 +179,7 @@ class _Sidebar extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(Gaps.radius)),
                     padding: const EdgeInsets.all(8),
-                    child: Image.asset('assets/images/logo.png', fit: BoxFit.cover, alignment: Alignment.centerLeft),
+                    child: Image.asset('assets/images/logo-two.png', fit: BoxFit.contain),
                   ),
                   if (extended) ...[
                     const SizedBox(width: Gaps.md),
@@ -169,7 +188,7 @@ class _Sidebar extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(AppConfig.appName, style: context.text.titleMedium),
-                          Text('Mobile', style: context.text.bodySmall),
+                          Text(AppConfig.appSubtitle, style: context.text.bodySmall),
                         ],
                       ),
                     ),

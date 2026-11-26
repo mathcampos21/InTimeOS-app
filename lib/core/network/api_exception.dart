@@ -1,9 +1,19 @@
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode, this.isNetwork = false});
+  const ApiException(
+    this.message, {
+    this.statusCode,
+    this.isNetwork = false,
+    this.twoFactorRequired = false,
+    this.twoFactorSetupRequired = false,
+    this.cloudflareAccessBlocked = false,
+  });
 
   final String message;
   final int? statusCode;
   final bool isNetwork;
+  final bool twoFactorRequired;
+  final bool twoFactorSetupRequired;
+  final bool cloudflareAccessBlocked;
 
   bool get isUnauthorized => statusCode == 401 || statusCode == 403;
 

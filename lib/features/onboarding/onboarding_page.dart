@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../core/config/app_config.dart';
 import '../../core/network/server_probe.dart';
 import '../../core/widgets/ui.dart';
 
@@ -46,29 +47,29 @@ const _slides = [
     icon: Icons.handyman_rounded,
     color: AppColors.accent,
     useLogo: true,
-    title: 'Bem-vindo ao\nMAP-OS Mobile',
-    text: 'Seu sistema de ordens de serviço no bolso, sincronizado com o MAP-OS da sua empresa.',
+    title: 'Bem-vindo ao\nInTimeOS Mobile',
+    text: 'Gestão técnica In Time no bolso: ordens de serviço, clientes e estoque sincronizados com a In Time Technology.',
     orbit: [Icons.assignment_outlined, Icons.people_alt_outlined, Icons.inventory_2_outlined],
   ),
   _Slide(
     icon: Icons.assignment_rounded,
     color: AppColors.os,
     title: 'Ordens de serviço\nna palma da mão',
-    text: 'Abra, acompanhe e atualize OS em campo: status, produtos, serviços, anotações e fotos.',
+    text: 'Abra, acompanhe e atualize OS em campo ou na bancada: status, laudo técnico, produtos, serviços, anotações e fotos.',
     orbit: [Icons.photo_camera_outlined, Icons.checklist_rounded, Icons.receipt_long_outlined],
   ),
   _Slide(
     icon: Icons.people_alt_rounded,
     color: AppColors.clientes,
-    title: 'Clientes, estoque\ne agenda',
-    text: 'Ligue ou chame no WhatsApp com um toque, consulte produtos e serviços e veja sua agenda.',
+    title: 'Clientes, estoque\ne agenda de entregas',
+    text: 'Ligue ou chame no WhatsApp com um toque, consulte peças em estoque e acompanhe os prazos de entrega.',
     orbit: [Icons.phone_in_talk_outlined, Icons.calendar_month_outlined, Icons.inventory_2_outlined],
   ),
   _Slide(
     icon: Icons.dns_rounded,
     color: AppColors.servicos,
-    title: 'Direto no\nseu servidor',
-    text: 'O app conversa só com o seu MAP-OS, sem intermediários. E o que você já abriu continua disponível sem internet.',
+    title: 'Conectado à\nIn Time Technology',
+    text: 'Acesso direto e seguro ao servidor InTimeOS da empresa, com suporte a autenticação em dois fatores (2FA) e cache offline.',
     orbit: [Icons.lock_outline_rounded, Icons.wifi_off_rounded, Icons.cloud_done_outlined],
   ),
 ];
@@ -77,6 +78,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _pager = PageController();
   final _url = TextEditingController();
   final _urlFocus = FocusNode();
+  final _cfClientId = TextEditingController();
+  final _cfClientSecret = TextEditingController();
 
   late final List<_Step> _steps = [
     if (!widget.serverOnly) ...List.filled(_slides.length, _Step.intro),
@@ -87,6 +90,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   int _page = 0;
   ServerMode? _mode;
+  bool _showCfAccess = false;
+  bool _obscureCfSecret = true;
   bool _testing = false;
   ProbeResult? _result;
   String? _formatError;
@@ -99,7 +104,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   void initState() {
     super.initState();
-    final initial = widget.initialUrl ?? '';
+    final auth = context.read<AuthState>();
+    _cfClientId.text = auth.cfAccessClientId;
+    _cfClientSecret.text = auth.cfAccessClientSecret;
+    _showCfAccess = auth.hasCfAccessToken;
+    final initial = (widget.initialUrl ?? '').isNotEmpty
+        ? widget.initialUrl!
+        : AppConfig.defaultServerUrl;
     if (initial.isNotEmpty) {
       _mode = initial.startsWith('http://') ? ServerMode.local : ServerMode.hosted;
       _url.text = initial.replaceFirst(RegExp(r'^https?://'), '');
@@ -111,6 +122,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _pager.dispose();
     _url.dispose();
     _urlFocus.dispose();
+    _cfClientId.dispose();
+    _cfClientSecret.dispose();
     super.dispose();
   }
 
@@ -157,7 +170,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     }
   }
 
-  void _confirmServer(String url) {
+  Future<void> _confirmServer(String url) async {
+    await context.read<AuthState>().setCfAccessCredentials(
+          clientId: _showCfAccess ? _cfClientId.text : '',
+          clientSecret: _showCfAccess ? _cfClientSecret.text : '',
+        );
+    if (!mounted) return;
     if (widget.serverOnly) {
       Navigator.of(context).pop(url);
     } else {
@@ -168,7 +186,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Future<void> _finish() async {
     final url = _result?.url ?? _builtUrl;
     setState(() => _finishing = true);
-    await context.read<AuthState>().completeOnboarding(url);
+    final auth = context.read<AuthState>();
+    await auth.setCfAccessCredentials(
+      clientId: _showCfAccess ? _cfClientId.text : '',
+      clientSecret: _showCfAccess ? _cfClientSecret.text : '',
+    );
+    await auth.completeOnboarding(url);
   }
 
   // ---------------------------------------------------------------------------
@@ -221,7 +244,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
       _formatError = null;
     });
     final started = DateTime.now();
-    final result = await ServerProbe.test(ServerProbe.buildUrl(_url.text, mode));
+    final result = await ServerProbe.test(
+      ServerProbe.buildUrl(_url.text, mode),
+      cfClientId: _showCfAccess ? _cfClientId.text : null,
+      cfClientSecret: _showCfAccess ? _cfClientSecret.text : null,
+    );
     // Tempo mínimo para a animação de teste não "piscar".
     final wait = const Duration(milliseconds: 700) - DateTime.now().difference(started);
     if (wait > Duration.zero) await Future<void>.delayed(wait);
@@ -229,6 +256,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     setState(() {
       _testing = false;
       _result = result;
+      if (result.cloudflareAccessBlocked) {
+        _showCfAccess = true;
+      }
     });
   }
 
@@ -452,10 +482,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
           children: [
             const _StepLabel('Passo 1 de 2'),
             const SizedBox(height: Gaps.sm),
-            Text('Onde está o seu\nMAP-OS?', style: _titleStyle(context)),
+            Text('Onde está o servidor\nInTimeOS?', style: _titleStyle(context)),
             const SizedBox(height: Gaps.md),
             Text(
-              'Isso define como o app vai se conectar ao seu servidor.',
+              'Escolha como o app vai se conectar ao servidor da In Time Technology.',
               style: _bodyStyle(context),
             ),
             const SizedBox(height: Gaps.xl),
@@ -464,11 +494,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
               onTap: () => _selectMode(ServerMode.hosted),
               icon: Icons.cloud_outlined,
               color: AppColors.clientes,
-              title: 'Hospedado na internet',
-              text: 'Em um domínio, hospedagem ou VPS. Acessível de qualquer lugar.',
+              title: 'Nuvem In Time (Padrão)',
+              text: 'Servidor oficial hospedado na internet. Acessível de qualquer lugar.',
               badgeIcon: Icons.lock_rounded,
               badge: 'HTTPS · conexão segura',
-              example: 'minhaempresa.com.br/mapos',
+              example: 'itos.intimelab.com.br',
             ),
             const SizedBox(height: Gaps.md),
             _ModeCard(
@@ -476,11 +506,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
               onTap: () => _selectMode(ServerMode.local),
               icon: Icons.router_outlined,
               color: AppColors.servicos,
-              title: 'Na rede local',
-              text: 'Num computador ou servidor da empresa (XAMPP, WAMP, Docker…).',
+              title: 'Na rede local / laboratório',
+              text: 'Num servidor interno ou container Docker na rede local da empresa.',
               badgeIcon: Icons.wifi_rounded,
               badge: 'HTTP · mesma rede Wi-Fi',
-              example: '192.168.0.10/mapos',
+              example: '192.168.0.10:18080',
             ),
           ],
         ),
@@ -509,8 +539,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
             const SizedBox(height: Gaps.md),
             Text(
               local
-                  ? 'Informe o IP do computador que roda o MAP-OS e, se houver, a porta e a pasta.'
-                  : 'Use o mesmo endereço que você abre no navegador para acessar o MAP-OS.',
+                  ? 'Informe o IP do servidor que roda o InTimeOS e, se houver, a porta (ex.: 18080).'
+                  : 'O servidor padrão da In Time já vem preenchido. Toque em Testar conexão para validar.',
               style: _bodyStyle(context),
             ),
             const SizedBox(height: Gaps.xl),
@@ -531,7 +561,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.06),
-                hintText: local ? '192.168.0.10/mapos' : 'minhaempresa.com.br/mapos',
+                hintText: local ? '192.168.0.10:18080' : 'itos.intimelab.com.br',
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.w500),
                 errorText: _formatError,
                 prefixIcon: Padding(
@@ -594,6 +624,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
               const SizedBox(height: Gaps.md),
               _Notice(icon: Icons.warning_amber_rounded, color: AppColors.warning, text: warning),
             ],
+            const SizedBox(height: Gaps.md),
+            _buildCloudflareAccessBox(context),
             const SizedBox(height: Gaps.lg),
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
@@ -625,6 +657,113 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
+  Widget _buildCloudflareAccessBox(BuildContext context) {
+    InputDecoration cfInputDeco(String label, String hint, {Widget? suffix}) => InputDecoration(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.06),
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+          suffixIcon: suffix,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: Gaps.md),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.accentBright, width: 1.5),
+          ),
+        );
+
+    return _GlassCard(
+      borderColor: _showCfAccess ? AppColors.accentBright.withValues(alpha: 0.45) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: _testing
+                ? null
+                : () => setState(() {
+                      _showCfAccess = !_showCfAccess;
+                      _result = null;
+                    }),
+            child: Row(
+              children: [
+                const IconBadge(Icons.security_rounded, color: AppColors.accentBright, size: 36),
+                const SizedBox(width: Gaps.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Proteção Cloudflare Access',
+                        style: context.text.titleSmall?.copyWith(color: Colors.white),
+                      ),
+                      Text(
+                        'Service Token (Client ID e Secret) para atravessar a validação Cloudflare',
+                        style: context.text.bodySmall?.copyWith(color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _showCfAccess,
+                  activeTrackColor: AppColors.accent,
+                  onChanged: _testing
+                      ? null
+                      : (v) => setState(() {
+                            _showCfAccess = v;
+                            _result = null;
+                          }),
+                ),
+              ],
+            ),
+          ),
+          if (_showCfAccess) ...[
+            const SizedBox(height: Gaps.md),
+            TextField(
+              controller: _cfClientId,
+              enabled: !_testing,
+              autocorrect: false,
+              enableSuggestions: false,
+              onChanged: (_) => setState(() => _result = null),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: cfInputDeco('CF-Access-Client-Id', 'Ex.: xxxx.access'),
+            ),
+            const SizedBox(height: Gaps.sm),
+            TextField(
+              controller: _cfClientSecret,
+              enabled: !_testing,
+              obscureText: _obscureCfSecret,
+              autocorrect: false,
+              enableSuggestions: false,
+              onChanged: (_) => setState(() => _result = null),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: cfInputDeco(
+                'CF-Access-Client-Secret',
+                'Cole o Client Secret do Service Token',
+                suffix: IconButton(
+                  icon: Icon(
+                    _obscureCfSecret ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: Colors.white54,
+                    size: 18,
+                  ),
+                  onPressed: () => setState(() => _obscureCfSecret = !_obscureCfSecret),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ---- Concluído ------------------------------------------------------------
 
   Widget _donePage(BuildContext context) {
@@ -644,7 +783,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 Text('Tudo pronto!', style: _titleStyle(context), textAlign: TextAlign.center),
                 const SizedBox(height: Gaps.md),
                 Text(
-                  'Seu servidor está configurado. Agora é só entrar com o seu usuário do MAP-OS.',
+                  'Seu servidor está configurado. Agora é só entrar com a sua conta de colaborador do InTimeOS.',
                   style: _bodyStyle(context),
                   textAlign: TextAlign.center,
                 ),

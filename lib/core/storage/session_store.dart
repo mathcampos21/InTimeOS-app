@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/app_config.dart';
+
 /// Persistência local da sessão e preferências do usuário.
 class SessionStore {
   SessionStore(this._prefs);
@@ -18,10 +20,39 @@ class SessionStore {
   static const _kLastEmail = 'last_email';
   static const _kThemeMode = 'theme_mode';
   static const _kOnboardingDone = 'onboarding_done';
+  static const _kCfClientId = 'cf_access_client_id';
+  static const _kCfClientSecret = 'cf_access_client_secret';
   static const _kCachePrefix = 'cache::';
 
   String? get baseUrl => _prefs.getString(_kBaseUrl);
   Future<void> setBaseUrl(String value) => _prefs.setString(_kBaseUrl, value);
+
+  String get cfAccessClientId {
+    final stored = _prefs.getString(_kCfClientId);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    return AppConfig.defaultCfAccessClientId.trim();
+  }
+
+  String get cfAccessClientSecret {
+    final stored = _prefs.getString(_kCfClientSecret);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    return AppConfig.defaultCfAccessClientSecret.trim();
+  }
+
+  bool get hasCfAccessToken =>
+      cfAccessClientId.isNotEmpty && cfAccessClientSecret.isNotEmpty;
+
+  Future<void> setCfAccessCredentials({required String clientId, required String clientSecret}) async {
+    final id = clientId.trim();
+    final secret = clientSecret.trim();
+    if (id.isEmpty && secret.isEmpty) {
+      await _prefs.remove(_kCfClientId);
+      await _prefs.remove(_kCfClientSecret);
+    } else {
+      await _prefs.setString(_kCfClientId, id);
+      await _prefs.setString(_kCfClientSecret, secret);
+    }
+  }
 
   String? get accessToken => _prefs.getString(_kAccess);
   String? get refreshToken => _prefs.getString(_kRefresh);

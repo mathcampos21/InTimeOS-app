@@ -22,8 +22,9 @@ void main() {
 
   group('AppConfig.normalizeBaseUrl', () {
     test('adiciona https e remove /api/v1 e barras', () {
-      expect(AppConfig.normalizeBaseUrl(' demo.mapos.com.br/api/v1/ '), 'https://demo.mapos.com.br');
-      expect(AppConfig.normalizeBaseUrl('http://10.0.0.2/mapos/'), 'http://10.0.0.2/mapos');
+      expect(AppConfig.normalizeBaseUrl(' itos.intimelab.com.br/api/v1/ '), 'https://itos.intimelab.com.br');
+      expect(AppConfig.normalizeBaseUrl('http://10.0.0.2:18080/'), 'http://10.0.0.2:18080');
+      expect(AppConfig.defaultServerUrl, 'https://itos.intimelab.com.br');
     });
   });
 
@@ -203,6 +204,32 @@ void main() {
         api.get('/x'),
         throwsA(isA<ApiException>().having((e) => e.message, 'message', contains('não encontrado'))),
       );
+    });
+
+    test('envia cabeçalhos CF-Access quando configurados e detecta bloqueio Cloudflare Access', () async {
+      await session.setCfAccessCredentials(clientId: 'id-123.access', clientSecret: 'sec-456');
+      Map<String, String>? sentHeaders;
+      final api = ApiClient(
+        session,
+        client: MockClient((req) async {
+          sentHeaders = req.headers;
+          return http.Response(
+            '<html><head><title>Cloudflare Access</title></head><body>/cdn-cgi/access/login</body></html>',
+            200,
+            headers: {'content-type': 'text/html'},
+          );
+        }),
+      );
+
+      await expectLater(
+        api.get('/os'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.cloudflareAccessBlocked, 'cloudflareAccessBlocked', isTrue),
+        ),
+      );
+      expect(sentHeaders?['CF-Access-Client-Id'], 'id-123.access');
+      expect(sentHeaders?['CF-Access-Client-Secret'], 'sec-456');
     });
   });
 }

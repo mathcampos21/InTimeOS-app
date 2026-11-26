@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/app_state.dart';
 import '../../core/config/app_config.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/utils/input_masks.dart';
 import '../../core/widgets/ui.dart';
 import '../easter_egg/julio_page.dart';
@@ -22,15 +23,19 @@ class _LoginPageState extends State<LoginPage> {
   final _server = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _totp = TextEditingController();
+  final _totpFocus = FocusNode();
   bool _obscure = true;
   bool _loading = false;
+  bool _needsTotp = false;
+  bool _cfBlocked = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     final auth = context.read<AuthState>();
-    _server.text = auth.serverUrl ?? '';
+    _server.text = (auth.serverUrl ?? '').isNotEmpty ? auth.serverUrl! : AppConfig.defaultServerUrl;
     _email.text = auth.lastEmail ?? '';
   }
 
@@ -39,6 +44,8 @@ class _LoginPageState extends State<LoginPage> {
     _server.dispose();
     _email.dispose();
     _password.dispose();
+    _totp.dispose();
+    _totpFocus.dispose();
     super.dispose();
   }
 
@@ -65,13 +72,35 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _cfBlocked = false;
     });
     try {
       await context.read<AuthState>().login(
             serverUrl: _server.text,
             email: _email.text,
             password: _password.text,
+            totp: _needsTotp ? _totp.text : null,
           );
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          if (e.cloudflareAccessBlocked) {
+            _cfBlocked = true;
+            _error = e.message;
+          } else if (e.twoFactorRequired) {
+            final firstPrompt = !_needsTotp;
+            _needsTotp = true;
+            _error = firstPrompt
+                ? 'Sua conta usa autenticação em dois fatores (2FA). Informe o código do autenticador abaixo.'
+                : e.message;
+            Future.delayed(const Duration(milliseconds: 120), () {
+              if (mounted) _totpFocus.requestFocus();
+            });
+          } else {
+            _error = e.message;
+          }
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -160,7 +189,10 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Text('Entrar', style: context.text.headlineSmall),
             const SizedBox(height: Gaps.xs),
-            Text('Acesse sua conta do MAP-OS para continuar.', style: context.text.bodyMedium?.copyWith(color: context.tokens.muted)),
+            Text(
+              'Acesse sua conta de colaborador do InTimeOS para continuar.',
+              style: context.text.bodyMedium?.copyWith(color: context.tokens.muted),
+            ),
             const SizedBox(height: Gaps.xl),
             _serverField(context),
             const SizedBox(height: Gaps.md),
@@ -178,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
               label: 'Senha',
               icon: Icons.lock_outline_rounded,
               obscure: _obscure,
-              textInputAction: TextInputAction.done,
+              textInputAction: _needsTotp ? TextInputAction.next : TextInputAction.done,
               autofillHints: const [AutofillHints.password],
               validator: (v) => Validators.required(v, 'Senha'),
               suffix: IconButton(
@@ -187,6 +219,23 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
+            if (_needsTotp) ...[
+              const SizedBox(height: Gaps.md),
+              TextFormField(
+                controller: _totp,
+                focusNode: _totpFocus,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                onFieldSubmitted: (_) => _submit(),
+                validator: (v) => Validators.required(v, 'Código 2FA'),
+                decoration: const InputDecoration(
+                  labelText: 'Código 2FA (autenticador ou recuperação)',
+                  hintText: '000000',
+                  prefixIcon: Icon(Icons.shield_outlined),
+                ),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: Gaps.lg),
               Container(
@@ -196,12 +245,28 @@ class _LoginPageState extends State<LoginPage> {
                   borderRadius: BorderRadius.circular(Gaps.radiusSm),
                   border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
-                    const SizedBox(width: Gaps.sm),
-                    Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.danger))),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                        const SizedBox(width: Gaps.sm),
+                        Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.danger))),
+                      ],
+                    ),
+                    if (_cfBlocked) ...[
+                      const SizedBox(height: Gaps.sm),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _changeServer,
+                          icon: const Icon(Icons.security_rounded, size: 18),
+                          label: const Text('Configurar Cloudflare Access'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -217,6 +282,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _serverField(BuildContext context) {
     final empty = _server.text.isEmpty;
     final local = _server.text.startsWith('http://');
+    final hasCf = context.watch<AuthState>().hasCfAccessToken;
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
       onTap: _loading ? null : _changeServer,
@@ -233,7 +299,11 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  empty ? 'Servidor' : (local ? 'Servidor · rede local' : 'Servidor · hospedado'),
+                  empty
+                      ? 'Servidor'
+                      : (local
+                          ? 'Servidor · rede local'
+                          : (hasCf ? 'Servidor · Cloudflare Access ativo' : 'Servidor · hospedado')),
                   style: context.text.bodySmall,
                 ),
                 Text(
@@ -265,10 +335,11 @@ class _BrandPanel extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.brand, AppColors.brandDeep],
+        color: AppColors.brandDeep,
+        image: DecorationImage(
+          image: AssetImage('assets/images/fundo-login.jpg'),
+          fit: BoxFit.cover,
+          opacity: 0.72,
         ),
       ),
       child: Stack(
@@ -292,7 +363,20 @@ class _BrandPanel extends StatelessWidget {
                 mainAxisAlignment: expanded ? MainAxisAlignment.center : MainAxisAlignment.start,
                 children: [
                   if (expanded) const Spacer(),
-                  Image.asset('assets/images/logo.png', height: expanded ? 56 : 40),
+                  Row(
+                    children: [
+                      Image.asset('assets/images/logo-two.png', height: expanded ? 44 : 34),
+                      const SizedBox(width: Gaps.sm),
+                      Text(
+                        AppConfig.appName,
+                        style: (expanded ? context.text.headlineSmall : context.text.titleLarge)?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
                   AnimatedSize(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
@@ -303,17 +387,39 @@ class _BrandPanel extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(height: expanded ? Gaps.xxl : Gaps.xl),
-                              Text(
-                                'Suas ordens de serviço,\nonde você estiver.',
-                                style: (expanded ? context.text.headlineMedium : context.text.headlineSmall)?.copyWith(
-                                  color: Colors.white,
-                                  height: 1.2,
-                                ),
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  Text(
+                                    'Gestão técnica',
+                                    style: (expanded ? context.text.headlineMedium : context.text.headlineSmall)?.copyWith(
+                                      color: Colors.white,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accentBright,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'In Time',
+                                      style: (expanded ? context.text.headlineMedium : context.text.headlineSmall)?.copyWith(
+                                        color: AppColors.brandDeep,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: Gaps.sm),
                               Text(
-                                'Clientes, produtos, serviços e OS sincronizados com o seu MAP-OS.',
-                                style: context.text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
+                                AppConfig.appDescription,
+                                style: context.text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.78)),
                               ),
                             ],
                           ),
@@ -397,9 +503,7 @@ class _CreditsState extends State<_Credits> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            link(Icons.code_rounded, 'Projeto no GitHub', AppConfig.projectUrl, context.tokens.muted),
-            link(Icons.forum_outlined, 'Comunidade no WhatsApp', AppConfig.communityUrl, const Color(0xFF25D366)),
-            link(Icons.public_rounded, 'Site do app', AppConfig.appSiteUrl, context.tokens.muted),
+            link(Icons.public_rounded, 'Painel Web InTimeOS', AppConfig.appSiteUrl, AppColors.accent),
           ],
         ),
         const SizedBox(height: Gaps.xs),
@@ -407,11 +511,9 @@ class _CreditsState extends State<_Credits> {
           TextSpan(
             style: muted,
             children: [
-              const TextSpan(text: 'Desenvolvido por '),
-              TextSpan(text: 'Felipe Santt', style: strong),
-              const TextSpan(text: ' & '),
+              const TextSpan(text: 'In Time Technology · '),
               TextSpan(
-                text: 'Julio Lobo',
+                text: 'InTimeOS Mobile',
                 style: strong,
                 recognizer: _secret,
                 mouseCursor: SystemMouseCursors.basic,
@@ -421,7 +523,7 @@ class _CreditsState extends State<_Credits> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 2),
-        Text('© ${DateTime.now().year} · MAP-OS Mobile v${AppConfig.appVersion}', style: muted, textAlign: TextAlign.center),
+        Text('© ${DateTime.now().year} · In Time Technology · v${AppConfig.appVersion}', style: muted, textAlign: TextAlign.center),
       ],
     );
   }

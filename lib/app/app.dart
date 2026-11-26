@@ -45,6 +45,7 @@ class _MaposAppState extends State<MaposApp> {
         Provider(create: (_) => ClientesRepository(_api)),
         Provider(create: (_) => ProdutosRepository(_api)),
         Provider(create: (_) => ServicosRepository(_api)),
+        Provider(create: (_) => EquipamentosRepository(_api)),
         Provider(create: (_) => OsRepository(_api)),
         Provider(create: (_) => ContaRepository(_api)),
         ChangeNotifierProvider.value(value: _auth),

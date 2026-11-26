@@ -8,6 +8,7 @@ import '../../core/widgets/ui.dart';
 import '../../data/models/cliente.dart';
 import '../../data/repositories/cadastros_repository.dart';
 import '../../data/models/ordem_servico.dart';
+import '../equipamentos/equipamentos_page.dart';
 import '../os/os_detail_page.dart';
 import '../os/os_form_page.dart';
 import 'cliente_form_page.dart';
@@ -261,6 +262,39 @@ class _ClienteDetailPageState extends State<ClienteDetailPage> {
                     trailing: const Icon(Icons.map_outlined, size: 18),
                   ),
                 ),
+                const SizedBox(height: Gaps.md),
+                AppCard(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => EquipamentosPage(clienteId: c.id)),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.devices_other_rounded, color: Color(0xFF6366F1), size: 22),
+                      ),
+                      const SizedBox(width: Gaps.md),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Equipamentos cadastrados', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text('Visualizar ou cadastrar aparelhos deste cliente', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: Gaps.sm),
                 _osSection(context, c),
               ],
             ),

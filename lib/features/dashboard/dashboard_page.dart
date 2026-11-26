@@ -157,8 +157,11 @@ class _Header extends StatelessWidget {
                     Expanded(
                       child: _HeaderStat(
                         icon: Icons.build_circle_outlined,
-                        label: 'Em andamento',
+                        label: 'OS em andamento',
                         value: data?.totalEmAndamento,
+                        subtitle: (data?.totalAguardandoPecas != null && data!.totalAguardandoPecas > 0)
+                            ? '${data!.totalAguardandoPecas} aguard. peças'
+                            : 'Ativas',
                         color: AppColors.accentBright,
                         onTap: () => ShellScope.of(context)?.openOsWithStatus('Em Andamento'),
                       ),
@@ -169,6 +172,7 @@ class _Header extends StatelessWidget {
                         icon: Icons.inventory_2_outlined,
                         label: 'Aguard. peças',
                         value: data?.totalAguardandoPecas,
+                        subtitle: 'Componentes',
                         color: const Color(0xFFFBBF24),
                         onTap: () => ShellScope.of(context)?.openOsWithStatus('Aguardando Peças'),
                       ),
@@ -183,6 +187,7 @@ class _Header extends StatelessWidget {
                         icon: Icons.request_quote_outlined,
                         label: 'Orçamentos',
                         value: data?.totalOrcamentos,
+                        subtitle: 'Em negociação',
                         color: const Color(0xFF38BDF8),
                         onTap: () => ShellScope.of(context)?.openOsWithStatus('Orçamento'),
                       ),
@@ -193,6 +198,7 @@ class _Header extends StatelessWidget {
                         icon: Icons.check_circle_outline_rounded,
                         label: 'Finalizadas',
                         value: data?.totalFinalizadas,
+                        subtitle: 'Prontas / entregues',
                         color: const Color(0xFF4ADE80),
                         onTap: () => ShellScope.of(context)?.openOsWithStatus('Finalizado'),
                       ),
@@ -295,10 +301,10 @@ class _BodyState extends State<_Body> {
     final kpis = [
       (Icons.assignment_rounded, 'Ordens', data.countOs, AppColors.os, HomeShell.tabOs),
       (Icons.people_rounded, 'Clientes', data.clientes, AppColors.clientes, HomeShell.tabClientes),
+      (Icons.devices_other_rounded, 'Equipamentos', data.equipamentos, const Color(0xFF6366F1), HomeShell.tabEquipamentos),
       (Icons.inventory_2_rounded, 'Produtos', data.produtos, AppColors.produtos, HomeShell.tabProdutos),
       (Icons.handyman_rounded, 'Serviços', data.servicos, AppColors.servicos, HomeShell.tabServicos),
       (Icons.verified_user_rounded, 'Garantias', data.garantias, AppColors.garantias, null),
-      (Icons.point_of_sale_rounded, 'Vendas', data.vendas, AppColors.vendas, null),
     ];
 
     final actions = [
@@ -307,6 +313,9 @@ class _BodyState extends State<_Body> {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const OsFormPage()));
           onChanged();
         }),
+      (Icons.devices_other_rounded, 'Equipamentos', const Color(0xFF6366F1), () async {
+        shell?.goTo(HomeShell.tabEquipamentos);
+      }),
       if (perms.canAdd('Cliente'))
         (Icons.person_add_alt_rounded, 'Cliente', AppColors.clientes, () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const ClienteFormPage()));
@@ -420,12 +429,20 @@ class _BodyState extends State<_Body> {
 }
 
 class _HeaderStat extends StatelessWidget {
-  const _HeaderStat({required this.icon, required this.label, required this.value, required this.color, this.onTap});
+  const _HeaderStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    this.subtitle,
+    this.onTap,
+  });
 
   final IconData icon;
   final String label;
   final int? value;
   final Color color;
+  final String? subtitle;
   final VoidCallback? onTap;
 
   @override
@@ -437,7 +454,7 @@ class _HeaderStat extends StatelessWidget {
         borderRadius: BorderRadius.circular(Gaps.radius),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.md),
+          padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
           child: Row(
             children: [
               Container(
@@ -450,6 +467,7 @@ class _HeaderStat extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     value == null
                         ? Container(
@@ -469,8 +487,18 @@ class _HeaderStat extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: context.text.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.65)),
+                      style: context.text.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                     ),
+                    if (subtitle != null && subtitle!.isNotEmpty)
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 10,
+                        ),
+                      ),
                   ],
                 ),
               ),

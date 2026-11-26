@@ -10,13 +10,14 @@ import '../../data/repositories/os_repository.dart';
 
 /// Cria ou edita uma OS. Retorna o id da OS salva.
 class OsFormPage extends StatefulWidget {
-  const OsFormPage({super.key, this.os, this.clienteId, this.clienteNome});
+  const OsFormPage({super.key, this.os, this.clienteId, this.clienteNome, this.equipamentoId});
 
   final OrdemServico? os;
 
   /// Pré-seleciona o cliente numa OS nova (ex.: aberta pela tela do cliente).
   final int? clienteId;
   final String? clienteNome;
+  final int? equipamentoId;
 
   @override
   State<OsFormPage> createState() => _OsFormPageState();

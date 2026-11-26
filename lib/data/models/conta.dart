@@ -111,6 +111,7 @@ class DashboardData {
   const DashboardData({
     required this.countOs,
     required this.clientes,
+    required this.equipamentos,
     required this.produtos,
     required this.servicos,
     required this.garantias,
@@ -125,6 +126,7 @@ class DashboardData {
 
   final int countOs;
   final int clientes;
+  final int equipamentos;
   final int produtos;
   final int servicos;
   final int garantias;
@@ -167,6 +169,7 @@ class DashboardData {
     return DashboardData(
       countOs: asInt(j['countOs']),
       clientes: asInt(j['clientes']),
+      equipamentos: asInt(j['equipamentos']),
       produtos: asInt(j['produtos']),
       servicos: asInt(j['servicos']),
       garantias: asInt(j['garantias']),

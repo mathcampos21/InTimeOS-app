@@ -2,6 +2,7 @@ import '../../core/network/api_client.dart';
 import '../models/catalogo.dart';
 import '../models/cliente.dart';
 import '../models/conta.dart';
+import '../models/equipamento.dart';
 
 List<Map<String, dynamic>> _list(dynamic result) => result is List
     ? result.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
@@ -67,6 +68,29 @@ class ServicosRepository {
   Future<void> create(Servico s) => _api.post('/servicos', body: s.toJson());
   Future<void> update(Servico s) => _api.put('/servicos/${s.id}', body: s.toJson());
   Future<void> delete(int id) => _api.delete('/servicos/$id');
+}
+
+class EquipamentosRepository {
+  EquipamentosRepository(this._api);
+  final ApiClient _api;
+
+  Future<List<Equipamento>> list({int page = 0, String search = '', int? clienteId}) async {
+    final query = <String, dynamic>{
+      'page': page,
+      if (search.isNotEmpty) 'search': search,
+      if (clienteId != null && clienteId > 0) 'cliente': clienteId,
+    };
+    final r = await _api.get('/equipamentos', query: query, cache: search.isEmpty && clienteId == null);
+    return _list(r).map(Equipamento.fromJson).toList();
+  }
+
+  Future<Equipamento> get(int id) async =>
+      Equipamento.fromJson(_map(await _api.get('/equipamentos/$id', cache: true)));
+
+  Future<int> create(Equipamento e) async {
+    final r = _map(await _api.post('/equipamentos', body: e.toJson()));
+    return (r['idEquipamentos'] as num?)?.toInt() ?? 0;
+  }
 }
 
 class ContaRepository {

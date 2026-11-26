@@ -7,6 +7,7 @@ import '../../data/models/conta.dart';
 import '../../data/repositories/cadastros_repository.dart';
 import '../clientes/clientes_page.dart';
 import '../dashboard/dashboard_page.dart';
+import '../equipamentos/equipamentos_page.dart';
 import '../os/os_list_page.dart';
 import '../produtos/produtos_page.dart';
 import '../profile/account_menu.dart';
@@ -36,8 +37,9 @@ class HomeShell extends StatefulWidget {
   static const int tabInicio = 0;
   static const int tabOs = 1;
   static const int tabClientes = 2;
-  static const int tabProdutos = 3;
-  static const int tabServicos = 4;
+  static const int tabEquipamentos = 3;
+  static const int tabProdutos = 4;
+  static const int tabServicos = 5;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -57,6 +59,7 @@ class _HomeShellState extends State<HomeShell> {
     (Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, 'Painel'),
     (Icons.assignment_outlined, Icons.assignment_rounded, 'Ordens'),
     (Icons.people_outline_rounded, Icons.people_rounded, 'Clientes'),
+    (Icons.devices_other_outlined, Icons.devices_other_rounded, 'Equipamentos'),
     (Icons.inventory_2_outlined, Icons.inventory_2_rounded, 'Produtos'),
     (Icons.handyman_outlined, Icons.handyman_rounded, 'Serviços'),
   ];
@@ -87,6 +90,8 @@ class _HomeShellState extends State<HomeShell> {
       case 2:
         return const ClientesPage();
       case 3:
+        return const EquipamentosPage();
+      case 4:
         return const ProdutosPage();
       default:
         return const ServicosPage();
@@ -96,7 +101,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 840;
-    final body = IndexedStack(index: _index, children: List.generate(5, _page));
+    final body = IndexedStack(index: _index, children: List.generate(6, _page));
 
     return ShellScope(
       goTo: _go,

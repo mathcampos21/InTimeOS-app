@@ -2,7 +2,7 @@ name: mapos_app
 description: "InTimeOS Mobile — Sistema de Gestão e Ordens de Serviço da In Time Technology."
 publish_to: 'none'
 
-version: 5.4.0+54
+version: 5.4.1+55
 
 environment:
   sdk: ^3.7.2

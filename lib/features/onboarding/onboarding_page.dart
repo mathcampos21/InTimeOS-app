@@ -1187,8 +1187,8 @@ class _OrbitHeroState extends State<_OrbitHero> with SingleTickerProviderStateMi
                     alignment: Alignment.center,
                     child: widget.slide.useLogo
                         ? Padding(
-                            padding: EdgeInsets.all(core * 0.18),
-                            child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                            padding: EdgeInsets.all(core * 0.22),
+                            child: Image.asset('assets/images/logo_branca.png', fit: BoxFit.contain),
                           )
                         : Icon(widget.slide.icon, color: Colors.white, size: core * 0.5),
                   ),
